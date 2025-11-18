@@ -1,0 +1,15 @@
+const express = require('express');
+require('dotenv').config(); 
+const connectDB = require('./src/config/database');
+const authRoutes = require('./src/routes/authroutes');  // route
+
+const app = express();
+
+app.use(express.json()); // Parses JSON
+
+connectDB(); // connects to MongoDB
+
+app.use('/api/auth/', authRoutes);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
