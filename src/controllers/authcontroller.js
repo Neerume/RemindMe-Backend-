@@ -82,11 +82,11 @@ const getProfile = async (req, res) => {
 
 // Update user profile
 const updateProfile = async (req, res) => {
-  const { name, email } = req.body;
+  const { name, email, photo} = req.body;
   try {
     const user = await User.findOneAndUpdate(
       { phoneNumber: req.user.phoneNumber },
-      { name, email },
+      { name, email, photo },
       { new: true }
     );
     res.json(user);
