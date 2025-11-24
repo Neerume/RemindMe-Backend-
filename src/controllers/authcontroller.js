@@ -60,8 +60,8 @@ const login = async (req, res) => {
       await user.save();
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ phoneNumber: user.phoneNumber }, process.env.JWT_SECRET);
+    // Generate JWT including _id (internal user ID)
+    const token = jwt.sign({ _id: user._id, phoneNumber: user.phoneNumber }, process.env.JWT_SECRET);
 
     res.json({ token, user });
   } catch (error) {
