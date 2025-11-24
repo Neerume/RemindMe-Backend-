@@ -18,5 +18,5 @@ const medicineSchema = new mongoose.Schema({
   alarms: [medicineTimeSchema],
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // link to user
 }, { timestamps: true });
-
+  
 module.exports = mongoose.model('Medicine', medicineSchema);
