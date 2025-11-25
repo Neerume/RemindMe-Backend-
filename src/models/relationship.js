@@ -1,4 +1,4 @@
-const mongooose = require ('mongoose');
+const mongoose = require ('mongoose');
 
 const relationshipSchema = new mongoose.Schema({
   inviterId: {

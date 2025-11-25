@@ -3,7 +3,7 @@ require('dotenv').config();
 const connectDB = require('./src/config/database');
 const authRoutes = require('./src/routes/authroutes');  // route
 const medicineroutes = require('./src/routes/medicineroutes');  // route
-const relationshipRoutes = require('./routes/relationshiproutes');
+const relationshipRoutes = require('./src/routes/relationshiproute');
 
 const cors = require('cors'); 
 

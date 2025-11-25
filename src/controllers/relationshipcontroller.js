@@ -1,8 +1,5 @@
 const Relationship = require('../models/relationship');
-const User = require('../models/userModel');
-
-
-
+const User = require('../models/users');
 
 // Invite Caregiver via link
 const inviteCaregiver = async (req, res) => {
