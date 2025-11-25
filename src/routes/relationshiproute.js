@@ -6,6 +6,9 @@ const relationshipController = require('../controllers/relationshipcontroller');
 router.get('/invite/caregiver/:inviterId', relationshipController.inviteCaregiver);
 router.get('/invite/patient/:inviterId', relationshipController.invitePatient);
 
+// Respond to invite (accept or reject) - Fixed to POST with hyphen
+router.post('/respond-invite', relationshipController.respondInvite);
+
 // Add a new relationship (when someone joins via invite link)
 router.post('/addrelation', relationshipController.addRelationship);
 
