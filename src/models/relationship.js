@@ -21,7 +21,12 @@ const relationshipSchema = new mongoose.Schema({
   connectedAt: {
     type: Date,
     default: Date.now,
-  }
+  },
+  status: {
+  type: String,
+  enum: ['pending', 'accepted', 'rejected'],
+  default: 'pending'
+}
 
 })
 module.exports = mongoose.model('Relationship', relationshipSchema);

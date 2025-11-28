@@ -9,7 +9,7 @@ router.get('/invite/patient/:inviterId', relationshipController.invitePatient);
 // Respond to invite (accept or reject) - Fixed to POST with hyphen
 router.post('/respond-invite', relationshipController.respondInvite);
 
-// Add a new relationship (when someone joins via invite link)
+// Add a new relationship (when someone joins via invite link)  
 router.post('/addrelation', relationshipController.addRelationship);
 
 // Get all caregivers for a specific user (patient)

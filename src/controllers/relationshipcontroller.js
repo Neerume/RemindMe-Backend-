@@ -77,29 +77,32 @@ const invitePatient = async (req, res) => {
   }
 };
 
-// Respond to invite (accept or reject, updates status)
 const respondInvite = async (req, res) => {
   const { inviterId, inviteeId, type, action } = req.body;
+
   try {
-    const relationship = await Relationship.findOne({ inviterId, invitedId: inviteeId, role: type });
+    const relationship = await Relationship.findOne({
+      inviterId: inviterId,
+      invitedId: inviteeId,  // make sure field name matches your model
+      role: type
+    });
+
     if (!relationship) return res.status(404).json({ message: 'Invitation not found.' });
 
-    // Prevent responding to already processed invites
     if (relationship.status !== 'pending') {
       return res.status(400).json({ message: 'Invitation already responded to.' });
     }
 
     if (action === 'accept') {
       relationship.status = 'accepted';
-      await relationship.save();
-      res.status(200).json({ message: 'Invitation accepted!' });
     } else if (action === 'reject') {
       relationship.status = 'rejected';
-      await relationship.save();
-      res.status(200).json({ message: 'Invitation declined.' });
     } else {
-      res.status(400).json({ message: 'Invalid action.' });
+      return res.status(400).json({ message: 'Invalid action.' });
     }
+
+    await relationship.save();
+    res.status(200).json({ message: `Invitation ${relationship.status}!` });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

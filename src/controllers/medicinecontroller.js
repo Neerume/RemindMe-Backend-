@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 
 const addMedicine = async(req,res)=>{
   try {
+    
     const userId = req.user._id; // from JWT middleware
     const medicineData = { ...req.body, userId };
     const medicine = new Medicine(medicineData);
