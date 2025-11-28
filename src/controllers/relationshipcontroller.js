@@ -80,19 +80,27 @@ const invitePatient = async (req, res) => {
 const respondInvite = async (req, res) => {
   const { inviterId, inviteeId, type, action } = req.body;
 
+  // Validate request body
+  if (!inviterId || !inviteeId || !type || !action) {
+    return res.status(400).json({ message: 'Missing required fields.' });
+  }
+
   try {
-    const relationship = await Relationship.findOne({
-      inviterId: inviterId,
-      invitedId: inviteeId,  // make sure field name matches your model
-      role: type
-    });
+    // Find the relationship in DB
+    const relationship = await Relationship.findOne({ inviterId, invitedId: inviteeId, role: type });
 
-    if (!relationship) return res.status(404).json({ message: 'Invitation not found.' });
+    if (!relationship) {
+      console.log('Relationship not found:', { inviterId, inviteeId, type });
+      return res.status(404).json({ message: 'Invitation not found.' });
+    }
 
+    // Check if already responded
     if (relationship.status !== 'pending') {
+      console.log('Invitation already responded:', { status: relationship.status });
       return res.status(400).json({ message: 'Invitation already responded to.' });
     }
 
+    // Process action
     if (action === 'accept') {
       relationship.status = 'accepted';
     } else if (action === 'reject') {
@@ -102,13 +110,13 @@ const respondInvite = async (req, res) => {
     }
 
     await relationship.save();
-    res.status(200).json({ message: `Invitation ${relationship.status}!` });
+
+    return res.status(200).json({ message: `Invitation ${relationship.status}!` });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in respondInvite:', error);
+    return res.status(500).json({ message: 'Server error. Check server logs.' });
   }
 };
-
 // Create a new relationship manually
 const addRelationship = async (req, res) => {
   try {
