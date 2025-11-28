@@ -1,4 +1,3 @@
-// models/MedicineLog.js
 const mongoose = require('mongoose');
 
 const medicineLogSchema = new mongoose.Schema({
