@@ -79,15 +79,18 @@ const generateReport = async (req, res) => {
       createdAt: { $gte: lastMonth }
     });
 
-    const report = {
-      totalMeds: medicines.length,
-      takenCount: logs.filter(log => log.action === 'Taken').length,
-      skippedCount: logs.filter(log => log.action === 'Skipped').length,
-      adherence: medicines.length > 0
-        ? `${Math.round((logs.filter(log => log.action === 'Taken').length / medicines.length) * 100)}%`
-        : '0%',
-      medList: medicines.map(med => med.name)
-    };
+   const takenLogs = logs.filter(log => log.action === 'taken').length;
+const skippedLogs = logs.filter(log => log.action === 'skipped').length;
+
+const report = {
+  totalMeds: medicines.length,
+  takenCount: takenLogs,
+  skippedCount: skippedLogs,
+  adherence: medicines.length > 0
+    ? `${Math.round((takenLogs / medicines.length) * 100)}%`
+    : '0%',
+  medList: medicines.map(med => med.name)
+};
 
     res.status(200).json({ success: true, report });
   } catch (err) {
