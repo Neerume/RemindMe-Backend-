@@ -55,7 +55,9 @@ try {
   
 }
 const logAction = async (req, res) => {
-  const { userId, medicineId, action } = req.body;
+  const userId = req.user._id;  // get user from JWT
+  const { medicineId, action } = req.body;
+
   try {
     const log = await MedicineLog.create({ userId, medicineId, action });
     res.json({ success: true, log });
@@ -63,6 +65,7 @@ const logAction = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 }
+
 const generateReport = async (req, res) => {
   try {
     const userId = req.user._id;
