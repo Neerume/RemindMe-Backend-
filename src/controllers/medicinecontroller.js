@@ -58,8 +58,19 @@ const logAction = async (req, res) => {
   const userId = req.user._id;  // get user from JWT
   const { medicineId, action } = req.body;
 
+  const medicine = await Medicine.findById(medicineId);
+if (!medicine || medicine.userId.toString() !== userId.toString()) {
+  return res.status(404).json({ success: false, message: "Medicine not found" });
+}
+
   try {
-    const log = await MedicineLog.create({ userId, medicineId, action });
+const mongoose = require('mongoose');
+
+const log = await MedicineLog.create({
+  userId: mongoose.Types.ObjectId(userId),
+  medicineId: mongoose.Types.ObjectId(medicineId),
+  action
+});
     res.json({ success: true, log });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
