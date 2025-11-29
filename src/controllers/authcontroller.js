@@ -1,12 +1,21 @@
 const User = require('../models/users');
 const jwt = require('jsonwebtoken');
 
-// Temporary memory to store OTPs and verification status
-const otpStore = {}; // { phoneNumber: { otp: '222222', verified: true/false } }
+// -------------------- Helper: normalize phone --------------------
+function normalizePhone(phone) {
+  if (!phone) return '';
+  return phone.trim().replace(/^\+/, ''); // remove leading '+', trim spaces
+}
 
-// Send OTP (static for now)
+// Temporary memory to store OTPs and verification status
+// { normalizedPhone: { otp: '222222', verified: true/false } }
+const otpStore = {};
+
+// -------------------- Send OTP (static for now) --------------------
 const sendOtp = async (req, res) => {
-  const { phoneNumber } = req.body;
+  let { phoneNumber } = req.body;
+  phoneNumber = normalizePhone(phoneNumber);
+
   const STATIC_OTP = "222222";
 
   // Save OTP and mark as unverified
@@ -19,9 +28,10 @@ const sendOtp = async (req, res) => {
   });
 };
 
-// Verify OTP
+// -------------------- Verify OTP --------------------
 const verifyotp = async (req, res) => {
-  const { phoneNumber, otp } = req.body;
+  let { phoneNumber, otp } = req.body;
+  phoneNumber = normalizePhone(phoneNumber);
 
   if (!otpStore[phoneNumber]) {
     return res.status(400).json({ error: "No OTP sent for this phone number" });
@@ -37,9 +47,10 @@ const verifyotp = async (req, res) => {
   res.json({ success: true, message: "OTP verified successfully" });
 };
 
-// Login
+// -------------------- Login --------------------
 const login = async (req, res) => {
-  const { phoneNumber, name } = req.body;
+  let { phoneNumber, name } = req.body;
+  phoneNumber = normalizePhone(phoneNumber);
 
   try {
     let user = await User.findOne({ phoneNumber });
@@ -61,7 +72,10 @@ const login = async (req, res) => {
     }
 
     // Generate JWT including _id (internal user ID)
-    const token = jwt.sign({ _id: user._id, phoneNumber: user.phoneNumber }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { _id: user._id, phoneNumber: user.phoneNumber },
+      process.env.JWT_SECRET
+    );
 
     res.json({ token, user });
   } catch (error) {
@@ -70,22 +84,24 @@ const login = async (req, res) => {
   }
 };
 
-// Get user profile
+// -------------------- Get user profile --------------------
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findOne({ phoneNumber: req.user.phoneNumber });
+    const normalizedPhone = normalizePhone(req.user.phoneNumber);
+    const user = await User.findOne({ phoneNumber: normalizedPhone });
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 };
 
-// Update user profile
+// -------------------- Update user profile --------------------
 const updateProfile = async (req, res) => {
-  const { name, email, photo} = req.body;
+  const { name, email, photo } = req.body;
   try {
+    const normalizedPhone = normalizePhone(req.user.phoneNumber);
     const user = await User.findOneAndUpdate(
-      { phoneNumber: req.user.phoneNumber },
+      { phoneNumber: normalizedPhone },
       { name, email, photo },
       { new: true }
     );
