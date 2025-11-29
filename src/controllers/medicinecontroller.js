@@ -57,6 +57,7 @@ const logAction = async (req, res) => {
   try {
     const userId = req.user._id;  // get user from JWT
     const { medicineId, action } = req.body;
+    console.log('req.user from JWT:', req.user);
 
     // Validate input
     if (!medicineId || !action) {
@@ -73,6 +74,23 @@ const logAction = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized: Medicine does not belong to user" });
     }
 
+    // If action is 'taken', decrement pillCount based on dose
+    if (action === 'taken' && medicine.pillCount != null) {
+      // Extract number from dose string (e.g., "1 tablet" -> 1, "2 tablets" -> 2)
+      const doseMatch = medicine.dose?.toString().match(/\d+/);
+      const doseAmount = doseMatch ? parseInt(doseMatch[0]) : 1;
+      
+      const currentPillCount = typeof medicine.pillCount === 'number' 
+        ? medicine.pillCount 
+        : parseInt(medicine.pillCount) || 0;
+      
+      const newPillCount = Math.max(0, currentPillCount - doseAmount);
+      
+      // Update medicine with new pill count
+      medicine.pillCount = newPillCount;
+      await medicine.save();
+    }
+
     // Create log entry
     const log = await MedicineLog.create({
       userId: new mongoose.Types.ObjectId(userId),
@@ -80,7 +98,30 @@ const logAction = async (req, res) => {
       action
     });
 
-    res.status(201).json({ success: true, log });
+    // Check if refill is needed (less than 7 days worth of pills remaining)
+    let needsRefill = false;
+    if (action === 'taken' && medicine.pillCount != null) {
+      const doseMatch = medicine.dose?.toString().match(/\d+/);
+      const doseAmount = doseMatch ? parseInt(doseMatch[0]) : 1;
+      const remainingPills = typeof medicine.pillCount === 'number' 
+        ? medicine.pillCount 
+        : parseInt(medicine.pillCount) || 0;
+      
+      // Calculate days until refill needed (assuming daily dose)
+      const daysRemaining = Math.floor(remainingPills / doseAmount);
+      needsRefill = daysRemaining <= 7 && remainingPills > 0;
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      log,
+      medicine: {
+        _id: medicine._id,
+        name: medicine.name,
+        pillCount: medicine.pillCount,
+        needsRefill: needsRefill
+      }
+    });
   } catch (err) {
     console.error('Error in logAction:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -149,3 +190,4 @@ const generateReport = async (req, res) => {
 }
 
 module.exports = { addMedicine, updateMedicine, getMedicine, deleteMedicine, logAction, generateReport };
+
