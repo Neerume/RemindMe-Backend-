@@ -124,11 +124,10 @@ const generateReport = async (req, res) => {
     const medicines = await Medicine.find({ userId });
 
     // Get date range - last month by default, or use query params
-    const lastMonth = new Date();
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
+        let startDate = new Date();
+      startDate.setDate(1);
     
     // Optional: support month/year query params
-    let startDate = lastMonth;
     if (req.query.month && req.query.year) {
       startDate = new Date(parseInt(req.query.year), parseInt(req.query.month) - 1, 1);
     }
