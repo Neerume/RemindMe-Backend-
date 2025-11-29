@@ -1,184 +1,191 @@
-const Relationship = require('../models/relationship');
-const User = require('../models/users');
+const mongoose = require("mongoose");
+const Relationship = require("../models/relationship");
+const User = require("../models/users");
 
-// Invite Caregiver via link (sets status to 'pending')
+// -------------------------------
+// SEND INVITE (via share link)
+// -------------------------------
 const inviteCaregiver = async (req, res) => {
   const { inviterId } = req.params;
   const currentUserId = req.query.userId;
 
   try {
     if (!currentUserId) {
-      return res.status(401).json({ message: 'You must log in to accept this invitation.' });
+      return res.status(401).json({ message: "You must log in to open this invite." });
     }
 
-    // Prevent self-invites
+    // Prevent self invites
     if (inviterId === currentUserId) {
-      return res.status(400).json({ message: 'You cannot invite yourself.' });
+      return res.status(400).json({ message: "You cannot invite yourself." });
     }
 
+    // Check if pending/accepted invite already exists
     const exists = await Relationship.findOne({
       inviterId,
       invitedId: currentUserId,
-      role: 'caregiver'
+      role: "caregiver",
     });
-    if (exists) return res.status(400).json({ message: 'Caregiver already invited.' });
 
-    const relationship = new Relationship({
+    if (exists) {
+      return res.status(400).json({ message: "Caregiver already invited." });
+    }
+
+    // Create new invite
+    await Relationship.create({
       inviterId,
       invitedId: currentUserId,
-      role: 'caregiver',
-      status: 'pending' // New status field
+      role: "caregiver",
+      status: "pending",
     });
 
-    await relationship.save();
-    res.status(201).json({ message: 'Caregiver invitation sent successfully!' });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(201).json({ message: "Caregiver invitation created successfully!" });
+  } catch (err) {
+    console.error("inviteCaregiver Error:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-// Invite Patient via link (sets status to 'pending')
 const invitePatient = async (req, res) => {
   const { inviterId } = req.params;
   const currentUserId = req.query.userId;
 
   try {
     if (!currentUserId) {
-      return res.status(401).json({ message: 'You must log in to accept this invitation.' });
+      return res.status(401).json({ message: "You must log in to open this invite." });
     }
 
-    // Prevent self-invites
     if (inviterId === currentUserId) {
-      return res.status(400).json({ message: 'You cannot invite yourself.' });
+      return res.status(400).json({ message: "You cannot invite yourself." });
     }
 
     const exists = await Relationship.findOne({
       inviterId,
       invitedId: currentUserId,
-      role: 'patient'
+      role: "patient",
     });
-    if (exists) return res.status(400).json({ message: 'Patient already invited.' });
 
-    const relationship = new Relationship({
+    if (exists) {
+      return res.status(400).json({ message: "Patient already invited." });
+    }
+
+    await Relationship.create({
       inviterId,
       invitedId: currentUserId,
-      role: 'patient',
-      status: 'pending' // New status field
+      role: "patient",
+      status: "pending",
     });
 
-    await relationship.save();
-    res.status(201).json({ message: 'Patient invitation sent successfully!' });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(201).json({ message: "Patient invitation created successfully!" });
+  } catch (err) {
+    console.error("invitePatient Error:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
+// -------------------------------
+// RESPOND TO INVITE
+// -------------------------------
 const respondInvite = async (req, res) => {
-  const { inviterId, inviteeId, type, action } = req.body;
-
-  // Validate request body
-  if (!inviterId || !inviteeId || !type || !action) {
-    return res.status(400).json({ message: 'Missing required fields.' });
-  }
+  let { inviterId, inviteeId, type, action } = req.body;
 
   try {
-    // Find the relationship in DB
-    const relationship = await Relationship.findOne({ inviterId, invitedId: inviteeId, role: type });
+    if (!inviterId || !inviteeId || !type || !action) {
+      return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    const inviterObjectId = new mongoose.Types.ObjectId(inviterId);
+    const inviteeObjectId = new mongoose.Types.ObjectId(inviteeId);
+
+    // Normalize role string
+    const role = type.toLowerCase(); // caregiver / patient
+
+    // Only update an existing pending invite
+    const relationship = await Relationship.findOne({
+      inviterId: inviterObjectId,
+      invitedId: inviteeObjectId,
+      role,
+      status: "pending",
+    });
 
     if (!relationship) {
-      console.log('Relationship not found:', { inviterId, inviteeId, type });
-      return res.status(404).json({ message: 'Invitation not found.' });
+      return res.status(404).json({ message: "No pending invitation found." });
     }
 
-    // Check if already responded
-    if (relationship.status !== 'pending') {
-      console.log('Invitation already responded:', { status: relationship.status });
-      return res.status(400).json({ message: 'Invitation already responded to.' });
-    }
-
-    // Process action
-    if (action === 'accept') {
-      relationship.status = 'accepted';
-    } else if (action === 'reject') {
-      relationship.status = 'rejected';
-    } else {
-      return res.status(400).json({ message: 'Invalid action.' });
-    }
-
+    // Update status
+    relationship.status = action === "accept" ? "accepted" : "rejected";
     await relationship.save();
 
-    return res.status(200).json({ message: `Invitation ${relationship.status}!` });
-  } catch (error) {
-    console.error('Error in respondInvite:', error);
-    return res.status(500).json({ message: 'Server error. Check server logs.' });
-  }
-};
-// Create a new relationship manually
-const addRelationship = async (req, res) => {
-  try {
-    const { inviterId, invitedId, role } = req.body;
-
-    const exists = await Relationship.findOne({ inviterId, invitedId });
-    if (exists) {
-      return res.status(400).json({ message: 'User already invited' });
-    }
-
-    const relationship = new Relationship({ inviterId, invitedId, role, status: 'accepted' }); // Directly accepted for manual adds
-    await relationship.save();
-
-    res.status(201).json({ message: 'User added successfully', relationship });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(200).json({
+      message: `Invitation ${relationship.status}!`,
+      relationship,
+    });
+  } catch (err) {
+    console.error("respondInvite Error:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-// Get all caregivers for a specific patient (only accepted)
+// -------------------------------
+// FETCH CAREGIVERS (accepted only)
+// -------------------------------
 const getCaregivers = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const caregivers = await Relationship.find({ invitedId: userId, role: 'caregiver', status: 'accepted' })
-      .populate('inviterId', 'name phoneNumber photo')
-      .populate('invitedId', 'name phoneNumber photo');
+
+    const caregivers = await Relationship.find({
+      invitedId: userId,
+      role: "caregiver",
+      status: "accepted",
+    })
+      .populate("inviterId", "name phoneNumber photo")
+      .populate("invitedId", "name phoneNumber photo");
 
     res.status(200).json(caregivers);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+  } catch (err) {
+    console.error("getCaregivers Error:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-// Get all patients for a specific caregiver (only accepted)
+// -------------------------------
+// FETCH PATIENTS (accepted only)
+// -------------------------------
 const getPatient = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const patients = await Relationship.find({ inviterId: userId, role: 'patient', status: 'accepted' })
-      .populate('inviterId', 'name phoneNumber photo')
-      .populate('invitedId', 'name phoneNumber photo');
+
+    const patients = await Relationship.find({
+      inviterId: userId,
+      role: "patient",
+      status: "accepted",
+    })
+      .populate("inviterId", "name phoneNumber photo")
+      .populate("invitedId", "name phoneNumber photo");
 
     res.status(200).json(patients);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+  } catch (err) {
+    console.error("getPatient Error:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-// Delete a relationship
+// -------------------------------
+// DELETE RELATIONSHIP
+// -------------------------------
 const deleteRelation = async (req, res) => {
   try {
     const { id } = req.params;
-    const relationship = await Relationship.findByIdAndDelete(id);
-    if (!relationship) return res.status(404).json({ message: 'Relationship not found' });
 
-    res.status(200).json({ message: 'Relationship deleted successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    const relationship = await Relationship.findByIdAndDelete(id);
+    if (!relationship) {
+      return res.status(404).json({ message: "Relationship not found." });
+    }
+
+    res.status(200).json({ message: "Relationship deleted successfully." });
+  } catch (err) {
+    console.error("deleteRelation Error:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-module.exports = { inviteCaregiver, invitePatient, respondInvite, addRelationship, getCaregivers, getPatient, deleteRelation };
+module.exports = {inviteCaregiver, invitePatient, respondInvite, getCaregivers, getPatient, deleteRelation,};

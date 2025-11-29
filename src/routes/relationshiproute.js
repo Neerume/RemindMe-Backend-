@@ -1,24 +1,28 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const relationshipController = require('../controllers/relationshipcontroller');
+const {
+  inviteCaregiver,
+  invitePatient,
+  respondInvite,
+  getCaregivers,
+  getPatient,
+  deleteRelation,
+} = require("../controller/relationshipController");
 
-// Invite links
-router.get('/invite/caregiver/:inviterId', relationshipController.inviteCaregiver);
-router.get('/invite/patient/:inviterId', relationshipController.invitePatient);
+// Send invite using link
+router.get("/invite/caregiver/:inviterId", inviteCaregiver);
+router.get("/invite/patient/:inviterId", invitePatient);
 
-// Respond to invite (accept or reject) - Fixed to POST with hyphen
-router.post('/respond-invite', relationshipController.respondInvite);
+// Respond to invite
+router.post("/respond", respondInvite);
 
-// Add a new relationship (when someone joins via invite link)  
-router.post('/addrelation', relationshipController.addRelationship);
+// Fetch accepted caregivers (for patient dashboard)
+router.get("/caregivers/:userId", getCaregivers);
 
-// Get all caregivers for a specific user (patient)
-router.get('/caregivers/:userId', relationshipController.getCaregivers);
+// Fetch accepted patients (for caregiver dashboard)
+router.get("/patients/:userId", getPatient);
 
-// Get all patients for a specific user (caregiver)
-router.get('/patients/:userId', relationshipController.getPatient);
-
-// Delete a relationship
-router.delete('/delete/:id', relationshipController.deleteRelation);
+// Delete relationship
+router.delete("/:id", deleteRelation);
 
 module.exports = router;
