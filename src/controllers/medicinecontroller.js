@@ -116,26 +116,32 @@ const logAction = async (req, res) => {
   }
 }
 
+// Generate monthly report
 const generateReport = async (req, res) => {
   try {
     const userId = req.user._id;
-    
-    // Get all medicines for the user
-    const medicines = await Medicine.find({ userId });
 
-    // Get date range - last month by default, or use query params
-        let startDate = new Date();
-      startDate.setDate(1);
-    
-    // Optional: support month/year query params
+    // Get start date (first day of month)
+    let startDate = new Date();
+    startDate.setDate(1);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Support optional query params: ?month=11&year=2025
     if (req.query.month && req.query.year) {
       startDate = new Date(parseInt(req.query.year), parseInt(req.query.month) - 1, 1);
     }
 
-    // Get all medicine logs for the user in the specified period
+    // End date: first day of next month
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    // Fetch medicines
+    const medicines = await Medicine.find({ userId });
+
+    // Fetch logs in date range
     const logs = await MedicineLog.find({
       userId,
-      createdAt: { $gte: startDate }
+      createdAt: { $gte: startDate, $lt: endDate }
     });
 
     // Count actions
@@ -144,14 +150,11 @@ const generateReport = async (req, res) => {
     const snoozedLogs = logs.filter(log => log.action === 'snoozed').length;
     const totalLogs = logs.length;
 
-    // Calculate adherence: (taken / (taken + skipped)) * 100
-    // This gives a percentage of how many times medicine was taken vs skipped
+    // Adherence calculation
     let adherence = '0%';
     if (takenLogs + skippedLogs > 0) {
-      const adherenceValue = Math.round((takenLogs / (takenLogs + skippedLogs)) * 100);
-      adherence = `${adherenceValue}%`;
+      adherence = `${Math.round((takenLogs / (takenLogs + skippedLogs)) * 100)}%`;
     } else if (totalLogs > 0) {
-      // If only snoozed logs exist, calculate based on total
       adherence = `${Math.round((takenLogs / totalLogs) * 100)}%`;
     }
 
@@ -160,21 +163,24 @@ const generateReport = async (req, res) => {
       takenCount: takenLogs,
       skippedCount: skippedLogs,
       snoozedCount: snoozedLogs,
-      totalLogs: totalLogs,
-      adherence: adherence,
+      totalLogs,
+      adherence,
       medList: medicines.map(med => ({
         id: med._id,
         name: med.name,
-        dose: med.dose
+        dose: med.dose,
+        pillCount: med.pillCount
       }))
     };
 
     res.status(200).json({ success: true, report });
+
   } catch (err) {
     console.error('Error in generateReport:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
 
 module.exports = { addMedicine, updateMedicine, getMedicine, deleteMedicine, logAction, generateReport };
 
