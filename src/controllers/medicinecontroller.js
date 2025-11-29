@@ -2,6 +2,7 @@ const Medicine = require('../models/medicine');
 const MedicineLog = require('../models/medicinelog');
 const mongoose = require('mongoose');
 
+
 const addMedicine = async (req, res) => {
   try {
     const userId = req.user._id; // from JWT middleware
@@ -55,17 +56,14 @@ const deleteMedicine = async (req, res) => {
 
 const logAction = async (req, res) => {
   try {
-    const userId = req.user._id;  // get user from JWT
+    const userId = req.user._id;
     const { medicineId, action } = req.body;
-    console.log('req.user from JWT:', req.user);
 
-    // Validate input
-    if (!medicineId || !action) {
-      return res.status(400).json({ success: false, message: 'medicineId and action are required' });
-    }
+    // Convert medicineId to ObjectId here
+    const medicineObjectId = mongoose.Types.ObjectId(medicineId);
 
     // Check if medicine exists and belongs to user
-    const medicine = await Medicine.findById(medicineId);
+    const medicine = await Medicine.findById(medicineObjectId);
     if (!medicine) {
       return res.status(404).json({ success: false, message: "Medicine not found" });
     }
@@ -74,39 +72,32 @@ const logAction = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized: Medicine does not belong to user" });
     }
 
-    // If action is 'taken', decrement pillCount based on dose
+    // Decrement pillCount if 'taken'
     if (action === 'taken' && medicine.pillCount != null) {
-      // Extract number from dose string (e.g., "1 tablet" -> 1, "2 tablets" -> 2)
       const doseMatch = medicine.dose?.toString().match(/\d+/);
       const doseAmount = doseMatch ? parseInt(doseMatch[0]) : 1;
-      
-      const currentPillCount = typeof medicine.pillCount === 'number' 
-        ? medicine.pillCount 
-        : parseInt(medicine.pillCount) || 0;
-      
-      const newPillCount = Math.max(0, currentPillCount - doseAmount);
-      
-      // Update medicine with new pill count
-      medicine.pillCount = newPillCount;
+      const currentPillCount = typeof medicine.pillCount === 'number'
+          ? medicine.pillCount
+          : parseInt(medicine.pillCount) || 0;
+      medicine.pillCount = Math.max(0, currentPillCount - doseAmount);
       await medicine.save();
     }
 
     // Create log entry
-   const log = await MedicineLog.create({
-    userId: userId.toString(),    // or keep as ObjectId if your schema uses ObjectId
-    medicineId: medicineId,       // <-- this must be the string from payload
-    action
-  });
-    // Check if refill is needed (less than 7 days worth of pills remaining)
+    const log = await MedicineLog.create({
+      userId: mongoose.Types.ObjectId(userId),  // keep as ObjectId
+      medicineId: medicineObjectId,            // ObjectId now
+      action
+    });
+
+    // Refill check
     let needsRefill = false;
     if (action === 'taken' && medicine.pillCount != null) {
       const doseMatch = medicine.dose?.toString().match(/\d+/);
       const doseAmount = doseMatch ? parseInt(doseMatch[0]) : 1;
-      const remainingPills = typeof medicine.pillCount === 'number' 
-        ? medicine.pillCount 
-        : parseInt(medicine.pillCount) || 0;
-      
-      // Calculate days until refill needed (assuming daily dose)
+      const remainingPills = typeof medicine.pillCount === 'number'
+          ? medicine.pillCount
+          : parseInt(medicine.pillCount) || 0;
       const daysRemaining = Math.floor(remainingPills / doseAmount);
       needsRefill = daysRemaining <= 7 && remainingPills > 0;
     }
@@ -118,9 +109,10 @@ const logAction = async (req, res) => {
         _id: medicine._id,
         name: medicine.name,
         pillCount: medicine.pillCount,
-        needsRefill: needsRefill
+        needsRefill
       }
     });
+
   } catch (err) {
     console.error('Error in logAction:', err);
     res.status(500).json({ success: false, error: err.message });
