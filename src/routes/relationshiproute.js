@@ -7,7 +7,7 @@ const {
   getCaregivers,
   getPatient,
   deleteRelation,
-} = require("../controller/relationshipController");
+} = require("../controllers/relationshipcontroller");
 
 // Send invite using link
 router.get("/invite/caregiver/:inviterId", inviteCaregiver);
