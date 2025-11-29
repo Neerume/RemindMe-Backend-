@@ -92,12 +92,11 @@ const logAction = async (req, res) => {
     }
 
     // Create log entry
-    const log = await MedicineLog.create({
-      userId: new mongoose.Types.ObjectId(userId),
-      medicineId: new mongoose.Types.ObjectId(medicineId),
-      action
-    });
-
+   const log = await MedicineLog.create({
+    userId: userId.toString(),    // or keep as ObjectId if your schema uses ObjectId
+    medicineId: medicineId,       // <-- this must be the string from payload
+    action
+  });
     // Check if refill is needed (less than 7 days worth of pills remaining)
     let needsRefill = false;
     if (action === 'taken' && medicine.pillCount != null) {
