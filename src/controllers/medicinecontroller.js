@@ -59,11 +59,8 @@ const logAction = async (req, res) => {
     const userId = req.user._id;
     const { medicineId, action } = req.body;
 
-    // Convert medicineId to ObjectId here
-    const medicineObjectId = mongoose.Types.ObjectId(medicineId);
-
     // Check if medicine exists and belongs to user
-    const medicine = await Medicine.findById(medicineObjectId);
+    const medicine = await Medicine.findById(medicineId);
     if (!medicine) {
       return res.status(404).json({ success: false, message: "Medicine not found" });
     }
@@ -85,8 +82,8 @@ const logAction = async (req, res) => {
 
     // Create log entry
     const log = await MedicineLog.create({
-      userId: mongoose.Types.ObjectId(userId),  // keep as ObjectId
-      medicineId: medicineObjectId,            // ObjectId now
+      userId,        // no need to wrap in ObjectId
+      medicineId,    // string is fine
       action
     });
 
