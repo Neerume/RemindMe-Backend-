@@ -93,16 +93,11 @@ const respondInvite = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
-    const inviterObjectId = new mongoose.Types.ObjectId(inviterId);
-    const inviteeObjectId = new mongoose.Types.ObjectId(inviteeId);
-
-    // Normalize role string
     const role = type.toLowerCase(); // caregiver / patient
 
-    // Only update an existing pending invite
     const relationship = await Relationship.findOne({
-      inviterId: inviterObjectId,
-      invitedId: inviteeObjectId,
+      inviterId,
+      invitedId: inviteeId,
       role,
       status: "pending",
     });
@@ -111,7 +106,6 @@ const respondInvite = async (req, res) => {
       return res.status(404).json({ message: "No pending invitation found." });
     }
 
-    // Update status
     relationship.status = action === "accept" ? "accepted" : "rejected";
     await relationship.save();
 
